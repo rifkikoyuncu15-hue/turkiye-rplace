@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Türkiye r/place</title>
+  <style>
+    body { margin: 0; background: #111; color: white; font-family: sans-serif; }
+    #container { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    canvas { border: 2px solid white; image-rendering: pixelated; cursor: crosshair; max-width: 95vw; height: auto; }
+    button, input[type="color"] { margin-top: 15px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>Türkiye r/place Dijital Tablo</h1>
+    <canvas id="board" width="600" height="600"></canvas>
+    <input type="color" id="colorPicker" value="#ff0000" />
+    <button id="saveBtn">Tabloyu Kaydet</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+
+    // Arka plana Türkiye haritası çiz
+    const img = new Image();
+    img.src = 'https://upload.wikimedia.org/wikipedia/commons/2/23/Turkey_blank_map.png';
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+
+    // Renk seçimi
+    const colorPicker = document.getElementById('colorPicker');
+
+    // Tıklayınca piksel boya
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor(e.clientX - rect.left);
+      const y = Math.floor(e.clientY - rect.top);
+
+      ctx.fillStyle = colorPicker.value;
+      ctx.fillRect(x, y, 5, 5);
+
+      saveToLocal();
+    });
+
+    // Kayıt sistemi (LocalStorage)
+    function saveToLocal() {
+      const data = canvas.toDataURL();
+      localStorage.setItem('turkiyePlaceData', data);
+    }
+
+    function loadFromLocal() {
+      const data = localStorage.getItem('turkiyePlaceData');
+      if (data) {
+        const savedImg = new Image();
+        savedImg.src = data;
+        savedImg.onload = () => ctx.drawImage(savedImg, 0, 0);
+      }
+    }
+
+    window.onload = () => setTimeout(loadFromLocal, 500);
+
+    // Kaydetme özelliği
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'turkiye_rplace.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+      // Mobil uyumlu zoom + sürükleme
+    let scale = 1;
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    let translateX = 0, translateY = 0;
+
+    function applyTransform() {
+      canvas.style.transform = translate(${translateX}px, ${translateY}px) scale(${scale});
+    }
+
+    // Fare ile sürükleme
+    canvas.addEventListener('mousedown', (e) => {
+      isPanning = true;
+      startX = e.clientX - translateX;
+      startY = e.clientY - translateY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      translateX = e.clientX - startX;
+      translateY = e.clientY - startY;
+      applyTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isPanning = false;
+    });
+
+    // Dokunmatik sürükleme
+    canvas.addEventListener('touchstart', (e) => {
+      isPanning = true;
+      const touch = e.touches[0];
+      startX = touch.clientX - translateX;
+      startY = touch.clientY - translateY;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (!isPanning) return;
+      const touch = e.touches[0];
+      translateX = touch.clientX - startX;
+      translateY = touch.clientY - startY;
+      applyTransform();
+    });
+
+    canvas.addEventListener('touchend', () => {
+      isPanning = false;
+    });
+
+    // Zoom (fare tekeri)
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      scale = Math.min(3, Math.max(0.5, scale + delta));
+      applyTransform();
+    });
+
+    // Pinch Zoom (mobil)
+    let initialDistance = 0;
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (!initialDistance) initialDistance = dist;
+        const zoomFactor = dist / initialDistance;
+        scale = Math.min(3, Math.max(0.5, zoomFactor));
+        applyTransform();
+      }
+    });
+
+    canvas.addEventListener('touchend', () => {
+      initialDistance = 0;
+    });
+
+    // Kullanıcı adı sistemi
+    let username = localStorage.getItem('username');
+    if (!username) {
+      username = prompt('Kullanıcı adınızı girin:');
+      localStorage.setItem('username', username);
+    }
+
+    // Gerçek zamanlı çoklu kullanıcı (Firebase aktif bağlantı)
+    // Demo Sürüm: Kurulum gerektirmeyen sahte gerçek zamanlı sistem
+    // Bu demo herhangi bir sunucuya bağlanmaz — verileri simüle eder.
+
+    const fakeServer = [];
+
+    function sendPixelToServer(x, y, color, user) {
+      fakeServer.push({ x, y, color, user });
+    }
+
+    // Sahte gerçek zamanlı dinleyici (her 1 saniyede yeni piksel "yayınlar")
+    setInterval(() => {
+      if (fakeServer.length === 0) return;
+      const data = fakeServer.shift();
+      ctx.fillStyle = data.color;
+      ctx.fillRect(data.x, data.y, 5, 5);
+    }, 1000);(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        const data = change.doc.data();
+        ctx.fillStyle = data.color;
+        ctx.fillRect(data.x, data.y, 5, 5);
+      });
+    }); (Firebase altyapısı için placeholder)
+    // Burada sadece yapı hazırlanır, gerçek bağlantı kullanıcı isteğine göre eklenir.
+    function sendPixelToServer(x, y, color, user) {
+      console.log('Sunucuya gönderildi:', { x, y, color, user });
+      // firebase.firestore().collection('pixels').add({ x, y, color, user, time: Date.now() });
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / scale);
+      const y = Math.floor((e.clientY - rect.top) / scale);
+
+      ctx.fillStyle = colorPicker.value;
+      ctx.fillRect(x, y, 5, 5);
+
+      saveToLocal();
+      sendPixelToServer(x, y, colorPicker.value, username);
+    });
+
+    // Piksel art Türkiye haritası (basit grid çizim)
+    function drawPixelArtMap() {
+      ctx.fillStyle = '#333';
+      for (let i = 0; i < 600; i += 10) {
+        for (let j = 0; j < 600; j += 10) {
+          ctx.fillRect(i, j, 1, 1);
+        }
+      }
+    }
+
+    // İsteğe göre aktif edilebilir
+    // drawPixelArtMap();
+  </script>
+</body>
+</html>
